@@ -1,13 +1,28 @@
 from dotenv import load_dotenv
 import os
+import yaml
 from src.providers.sec_provider import SECProvider
 
+def load_config():
+    # Load configuration from conffig.yaml file
+    with open("config.yaml", "r") as file:
+        return yaml.safe_load(file)
+    
+
 def run_automation(user_agent):
+    config = load_config()
+
     # Initialize SEC provider with user agent
     sec_provider = SECProvider(user_agent)
     
-    # Fetch 10-K report
-    sec_provider.fetch_10k_report()
+    companies = config["companies"] # List of company tickers to fetch 10-K reports for
+    if not companies:
+        raise ValueError("companies list is empty in config.yaml")
+
+    # Fetch CIK for the list of companies
+    cik_mapping = sec_provider.get_cik(companies)
+
+    # Convert report to pdf and save to local directory
 
 if __name__ == "__main__":
     # Load environment variables from .env file

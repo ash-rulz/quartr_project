@@ -7,4 +7,4 @@ companies:
   - GS
 
 endpoints:
-  sec_ticker_mapping: "https://www.sec.gov/files/company_tickers.json"
+  sec_ticker_url: "https://www.sec.gov/files/company_tickers.json"

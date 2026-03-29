@@ -13,16 +13,11 @@ def run_automation(user_agent):
     config = load_config()
 
     # Initialize SEC provider with user agent
-    sec_provider = SECProvider(user_agent)
-    
-    companies = config["companies"] # List of company tickers to fetch 10-K reports for
-    if not companies:
-        raise ValueError("companies list is empty in config.yaml")
+    sec_provider = SECProvider(user_agent, config)
 
-    # Fetch CIK for the list of companies
-    cik_mapping = sec_provider.get_cik(companies)
+    # Fetch CIK mapping for the companies
+    cik_mapping = sec_provider.get_cik()
 
-    # Convert report to pdf and save to local directory
 
 if __name__ == "__main__":
     # Load environment variables from .env file

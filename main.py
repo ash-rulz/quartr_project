@@ -16,7 +16,10 @@ def run_automation(user_agent):
     sec_provider = SECProvider(user_agent, config)
 
     # Fetch CIK mapping for the companies
-    cik_mapping = sec_provider.get_cik()
+    sec_provider.get_cik()
+
+    # Fetch 10-K reports for the companies    
+    sec_provider.fetch_10k_report_url()
 
 
 if __name__ == "__main__":

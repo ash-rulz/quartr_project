@@ -8,3 +8,4 @@ companies:
 
 endpoints:
   sec_ticker_url: "https://www.sec.gov/files/company_tickers.json"
+  sec_submissions_url: "https://data.sec.gov/submissions/CIK{cik}.json"

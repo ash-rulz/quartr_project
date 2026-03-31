@@ -11,3 +11,8 @@ class BaseProvider(ABC):
     # This method should be implemented by subclasses to fetch the 10-K report url for a list of companies.
     def fetch_10k_report_url(self):
         pass
+    
+    @abstractmethod
+    # This method should be implemented by subclasses to download the 10-K reports for a list of companies.
+    def download_10k_reports(self):
+        pass

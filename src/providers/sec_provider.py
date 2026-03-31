@@ -8,6 +8,9 @@ class SECProvider(BaseProvider):
         self.companies = config["companies"]
         self.sec_ticker_cik_url = config["endpoints"]["sec_ticker_url"]
         self.sec_submissions_url = config["endpoints"]["sec_submissions_url"]
+        self.sec_filings_url = config["endpoints"]["sec_filing_url"]
+        self.cik_mapping_dict = {}
+        self.form_10k_url_dict = {} 
 
     def get_cik(self):
         # Implementation for getting CIK from SEC
@@ -28,13 +31,13 @@ class SECProvider(BaseProvider):
         
     def fetch_10k_report_url(self):
         # Implementation for fetching 10-K report url for a list of companies
-        url = self.sec_submissions_url
+        submissions_url = self.sec_submissions_url
         form_10k_url = {}
         for company in self.companies:
             cik = self.cik_mapping_dict[company]
             if cik:
                 print(f"Fetching 10-K report for {company} (CIK: {cik})...")
-                data = self.edgar_request(url.format(cik=cik)) # Call the helper method to make the request to SEC and get the data
+                data = self.edgar_request(submissions_url.format(cik=cik)) # Call the helper method to make the request to SEC and get the data
                 if data:
                     recent_filings = data['filings']['recent']
                     if recent_filings:
@@ -42,7 +45,7 @@ class SECProvider(BaseProvider):
                             if form == '10-K':
                                 accession_number = recent_filings['accessionNumber'][i].replace('-', '')
                                 primary_doc = recent_filings['primaryDocument'][i]
-                                report_url = f"https://www.sec.gov/Archives/edgar/data/{cik}/{accession_number}/{primary_doc}"
+                                report_url = self.sec_filings_url.format(cik=cik, accession_number=accession_number, filename=primary_doc)
                                 print(f"10-K report URL for {company} found.")
                                 form_10k_url[company] = report_url
                                 break

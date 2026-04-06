@@ -1,4 +1,6 @@
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 from datetime import datetime
 from src.providers.base_provider import BaseProvider
 from src.utils.utilities import common_utils
@@ -11,6 +13,19 @@ class SECProvider(BaseProvider):
         self.config = config
         self.cik_mapping_dict = {}
         self.form_10k_url_dict = {}
+        request_config = self.config.get("requests", {})
+        self.request_timeout = request_config["timeout_seconds"]
+        self.session = requests.Session()
+        retry_strategy = Retry(
+            total=request_config["retry_total"],
+            backoff_factor=request_config["retry_backoff_factor"],
+            status_forcelist=request_config["retry_status_forcelist"],
+            allowed_methods=["GET"],
+            respect_retry_after_header=True,
+        )
+        adapter = HTTPAdapter(max_retries=retry_strategy)
+        self.session.mount("https://", adapter)
+        self.session.mount("http://", adapter)
 
     def get_cik(self):
         # Implementation for getting CIK from SEC
@@ -64,7 +79,7 @@ class SECProvider(BaseProvider):
         try:
             # Ensure only 10 requests per second to comply with SEC guidelines
             self.common_utils.rate_limit()
-            response = requests.get(url, headers=self.headers)
+            response = self.session.get(url, headers=self.headers, timeout=self.request_timeout)
             response.raise_for_status()
             if response.status_code == 200:
                 output_format = kwargs.get("output_format", "json")

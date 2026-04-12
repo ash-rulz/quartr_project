@@ -2,12 +2,12 @@ import requests
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from datetime import datetime
-from src.providers.base_provider import BaseProvider
+#from src.providers.base_provider import BaseProvider
 from src.utils.utilities import common_utils
 from os import path, makedirs
 import pdfkit
 
-class SECProvider(BaseProvider):
+class SECProvider:
     def __init__(self, user_agent, config):
         self.headers = {"User-Agent": user_agent}
         self.config = config
@@ -26,12 +26,12 @@ class SECProvider(BaseProvider):
         adapter = HTTPAdapter(max_retries=retry_strategy)
         self.session.mount("https://", adapter)
         self.session.mount("http://", adapter)
+        self.common_utils = common_utils() # Initialize the common_utils instance for rate limiting
 
     def get_cik(self):
         # Implementation for getting CIK from SEC
         print(f"Getting CIK from SEC...")
         url = self.config["endpoints"]["sec_ticker_url"]
-        self.common_utils = common_utils() # Initialize the common_utils instance for rate limiting
         data = self.edgar_request(url) # Call the helper method to make the request to SEC and get the data
         if data:
             cik_lookup = {}

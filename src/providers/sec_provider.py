@@ -1,8 +1,6 @@
 import requests
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
 from datetime import datetime
-#from src.providers.base_provider import BaseProvider
+import time
 from src.utils.utilities import common_utils
 from os import path, makedirs
 import pdfkit
@@ -13,19 +11,7 @@ class SECProvider:
         self.config = config
         self.cik_mapping_dict = {}
         self.form_10k_url_dict = {}
-        request_config = self.config.get("requests", {})
-        self.request_timeout = request_config["timeout_seconds"]
         self.session = requests.Session()
-        retry_strategy = Retry(
-            total=request_config["retry_total"],
-            backoff_factor=request_config["retry_backoff_factor"],
-            status_forcelist=request_config["retry_status_forcelist"],
-            allowed_methods=["GET"],
-            respect_retry_after_header=True,
-        )
-        adapter = HTTPAdapter(max_retries=retry_strategy)
-        self.session.mount("https://", adapter)
-        self.session.mount("http://", adapter)
         self.common_utils = common_utils() # Initialize the common_utils instance for rate limiting
 
     def get_cik(self):
@@ -53,7 +39,7 @@ class SECProvider:
         for company in self.config["companies"]:
             cik = self.cik_mapping_dict[company]
             if cik:
-                print(f"Fetching 10-K report for {company} (CIK: {cik})...")
+                print(f"Fetching 10-K report url for {company} (CIK: {cik})...")
                 data = self.edgar_request(submissions_url.format(cik=cik)) # Call the helper method to make the request to SEC and get the data
                 if data:
                     recent_filings = data['filings']['recent']
@@ -76,35 +62,62 @@ class SECProvider:
 
     def edgar_request(self, url, **kwargs):
         # Helper method to make requests to the SEC EDGAR system
-        try:
-            # Ensure only 10 requests per second to comply with SEC guidelines
-            self.common_utils.rate_limit()
-            response = self.session.get(url, headers=self.headers, timeout=self.request_timeout)
-            response.raise_for_status()
-            if response.status_code == 200:
-                output_format = kwargs.get("output_format", "json")
-                output_path = kwargs.get("output_path", None)
-                if output_format == "json":
-                    return response.json()
-                elif output_format == "text":
-                    return response.text
-                elif output_format == "pdf":
-                    options = {
-                        'custom-header': [('User-Agent', self.headers['User-Agent'])],
-                        'quiet': ''
-                    }
-                    path_to_wkhtmltopdf = self.config["local_directory"]["wkhtmltopdf_directory"]
-                    config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
+        request_timeout = self.config["requests"]["timeout_seconds"]
+        retry_total = self.config["requests"]["retry_total"]
+        retry_backoff_factor = self.config["requests"]["retry_backoff_factor"]
+        response = None
+        last_error = None
+        for attempt in range(retry_total + 1):
+            try:
+                # Ensure only 10 requests per second to comply with SEC guidelines
+                self.common_utils.rate_limit()
+                response = self.session.get(url, headers=self.headers, timeout=request_timeout)
+                response.raise_for_status()
+                break
+            except requests.exceptions.RequestException as e:
+                # Retry on any request exception, including timeouts and connection errors
+                last_error = e
+                if attempt == retry_total:
+                    print(f"Error making request to {url}: {e}")
+                    return None
+                wait_time = retry_backoff_factor * (2 ** attempt)
+                print(f"Request failed for {url}. Retrying in {wait_time} seconds...")
+                time.sleep(wait_time)
+
+        if response is None:
+            return None
+
+        output_format = kwargs.get("output_format", "json")
+        output_path = kwargs.get("output_path", None)
+        if output_format == "json":
+            return response.json()
+        elif output_format == "text":
+            return response.text
+        elif output_format == "pdf":
+            options = {
+                'custom-header': [('User-Agent', self.headers['User-Agent'])],
+                'quiet': ''
+            }
+            path_to_wkhtmltopdf = self.config["local_directory"]["wkhtmltopdf_directory"]
+            config = pdfkit.configuration(wkhtmltopdf=path_to_wkhtmltopdf)
+            # Implementing retry logic for PDF generation with exponential backoff
+            last_error = None
+            for attempt in range(retry_total + 1):
+                try:
                     pdfkit.from_url(url, output_path, options=options, configuration=config)
                     print(f"Successfully saved: {output_path}")
-                else:
-                    print(f"Unsupported output format: {output_format}")
-                    return None
-            else:                
-                print(f"Failed to fetch data from SEC. Status code: {response.status_code}")
-                return None
-        except requests.exceptions.RequestException as e:
-            print(f"Error making request to {url}: {e}")
+                    return output_path
+                except Exception as e:
+                    last_error = e
+                    if attempt == retry_total:
+                        break
+                    wait_time = retry_backoff_factor * (2 ** attempt)
+                    print(f"PDF generation failed for {url}. Retrying in {wait_time} seconds...")
+                    time.sleep(wait_time)
+            print(f"Error generating PDF from {url}: {last_error}")
+            return None
+        else:
+            print(f"Unsupported output format: {output_format}")
             return None
     
     def download_10k_reports(self):

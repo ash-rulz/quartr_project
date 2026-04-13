@@ -130,13 +130,6 @@ class SECProvider:
             try:
                 # Call the helper method to make the request to SEC and get the data in text format
                 output_path = path.join(directory, f"{company}_10-K.pdf")
-                form_10k_text = self.edgar_request(url, output_format="pdf", output_path=output_path)
-                """if form_10k_text:
-                    filename = f"{company}_10-K.txt"
-                    with open(path.join(directory, filename), "w", encoding="utf-8") as file:
-                        file.write(form_10k_text)
-                    print(f"10-K report for {company} downloaded successfully as {filename}.")
-                else:
-                    print(f"Failed to download 10-K report for {company}. No data received.")  """
+                self.edgar_request(url, output_format="pdf", output_path=output_path)
             except Exception as e:
                 print(f"Error downloading 10-K report for {company}: {e}")

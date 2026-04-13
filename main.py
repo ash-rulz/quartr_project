@@ -6,7 +6,7 @@ from src.providers.sec_provider import SECProvider
 def load_config():
     # Load configuration from conffig.yaml file
     with open("config.yaml", "r") as file:
-        return yaml.safe_load(file)
+        return yaml.load(file, Loader=yaml.FullLoader)
     
 
 def run_automation(user_agent):

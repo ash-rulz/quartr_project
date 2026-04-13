@@ -16,13 +16,13 @@ def run_automation(user_agent):
     sec_provider = SECProvider(user_agent, config)
 
     # Fetch CIK mapping for the companies
-    sec_provider.get_cik()
+    cik_mapping_dict = sec_provider.get_cik()
 
     # Fetch 10-K report urls for the companies    
-    sec_provider.fetch_10k_report_url()
+    form_10k_url_dict = sec_provider.fetch_10k_report_url(cik_mapping_dict)
 
     # Download 10-K reports for the companies in PDF format and save them to the specified directory
-    sec_provider.download_10k_reports()
+    sec_provider.download_10k_reports(form_10k_url_dict)
 
 if __name__ == "__main__":
     # Load environment variables from .env file

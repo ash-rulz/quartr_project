@@ -9,8 +9,6 @@ class SECProvider:
     def __init__(self, user_agent, config):
         self.headers = {"User-Agent": user_agent}
         self.config = config
-        self.cik_mapping_dict = {}
-        self.form_10k_url_dict = {}
         self.session = requests.Session()
         self.common_utils = common_utils() # Initialize the common_utils instance for rate limiting
 
@@ -20,23 +18,25 @@ class SECProvider:
         url = self.config["endpoints"]["sec_ticker_url"]
         data = self.edgar_request(url) # Call the helper method to make the request to SEC and get the data
         if data:
+            cik_mapping_dict = {}
             cik_lookup = {}
             for item in data.values():
                  ticker = item.get("ticker")
                  cik = str( item.get("cik_str") ).zfill(10)  # Ensure CIK is 10 digits
                  if ticker and cik:
                      cik_lookup[ticker] = cik
-            self.cik_mapping_dict = {company: cik_lookup[company] 
+            cik_mapping_dict = {company: cik_lookup[company] 
                              for company in self.config["companies"] 
                              if company in cik_lookup}
-            print(f"Final CIK mapping: {self.cik_mapping_dict}")
+            print(f"Final CIK mapping: {cik_mapping_dict}")
+            return cik_mapping_dict
         
-    def fetch_10k_report_url(self):
+    def fetch_10k_report_url(self, cik_mapping_dict):
         # Implementation for fetching 10-K report url for a list of companies
         submissions_url = self.config["endpoints"]["sec_submissions_url"]
-        form_10k_url = {}
+        form_10k_url_dict = {}
         for company in self.config["companies"]:
-            cik = self.cik_mapping_dict[company]
+            cik = cik_mapping_dict[company]
             if cik:
                 print(f"Fetching 10-K report url for {company} (CIK: {cik})...")
                 data = self.edgar_request(submissions_url.format(cik=cik)) # Call the helper method to make the request to SEC and get the data
@@ -50,14 +50,14 @@ class SECProvider:
                                 report_url = self.config["endpoints"]["sec_filing_url"].format(
                                     cik=cik, accession_number=accession_number, filename=primary_doc)
                                 print(f"10-K report URL for {company} found.")
-                                form_10k_url[company] = report_url
+                                form_10k_url_dict[company] = report_url
                                 break
                     else:
                         print(f"No recent filings found for {company}.")
             else:
                 print(f"CIK not found for {company}. Skipping...")
-        print(f"Final 10-K report URLs: {form_10k_url}")
-        self.form_10k_url_dict = form_10k_url
+        print(f"Final 10-K report URLs: {form_10k_url_dict}")
+        return form_10k_url_dict
 
     def edgar_request(self, url, **kwargs):
         # Helper method to make requests to the SEC EDGAR system
@@ -119,13 +119,13 @@ class SECProvider:
             print(f"Unsupported output format: {output_format}")
             return None
     
-    def download_10k_reports(self):
+    def download_10k_reports(self, form_10k_url_dict):
         # Implementation for downloading 10-K reports for a list of companies
         directory = path.join(self.config["output"]["form_10k_directory"], 
                               datetime.now().strftime("%Y-%m-%d"))
         if not path.exists(directory):
             makedirs(directory)
-        for company, url in self.form_10k_url_dict.items():
+        for company, url in form_10k_url_dict.items():
             print(f"Downloading 10-K report for {company} from {url}...")
             try:
                 # Call the helper method to make the request to SEC and get the data in text format

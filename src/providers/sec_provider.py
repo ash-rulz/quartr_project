@@ -26,11 +26,10 @@ class SECProvider:
                  cik = str( item.get("cik_str") ).zfill(10)  # Ensure CIK is 10 digits
                  if ticker and cik:
                      cik_lookup[ticker] = cik
-            final_mapping = {company: cik_lookup[company] 
+            self.cik_mapping_dict = {company: cik_lookup[company] 
                              for company in self.config["companies"] 
                              if company in cik_lookup}
-            print(f"Final CIK mapping: {final_mapping}")
-            self.cik_mapping_dict = final_mapping
+            print(f"Final CIK mapping: {self.cik_mapping_dict}")
         
     def fetch_10k_report_url(self):
         # Implementation for fetching 10-K report url for a list of companies

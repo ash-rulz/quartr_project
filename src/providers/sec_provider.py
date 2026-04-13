@@ -74,7 +74,7 @@ class SECProvider:
                 response = self.session.get(url, headers=self.headers, timeout=request_timeout)
                 response.raise_for_status()
                 break
-            except requests.exceptions.RequestException as e:
+            except Exception as e:
                 # Retry on any request exception, including timeouts and connection errors
                 last_error = e
                 if attempt == retry_total:

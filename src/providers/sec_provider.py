@@ -19,15 +19,11 @@ class SECProvider:
         data = self.edgar_request(url) # Call the helper method to make the request to SEC and get the data
         if data:
             cik_mapping_dict = {}
-            cik_lookup = {}
             for item in data.values():
                  ticker = item.get("ticker")
                  cik = str( item.get("cik_str") ).zfill(10)  # Ensure CIK is 10 digits
-                 if ticker and cik:
-                     cik_lookup[ticker] = cik
-            cik_mapping_dict = {company: cik_lookup[company] 
-                             for company in self.config["companies"] 
-                             if company in cik_lookup}
+                 if cik and ticker in self.config["companies"]:
+                     cik_mapping_dict[ticker] = cik
             print(f"Final CIK mapping: {cik_mapping_dict}")
             return cik_mapping_dict
         
